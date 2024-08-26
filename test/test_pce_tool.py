@@ -1,6 +1,7 @@
 import sys
 import os
 import shutil
+import functools
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 from pce.pce_tool import PCETools
 
@@ -56,10 +57,11 @@ def test_copy_markup():
     new_file_2 = os.path.join(os.path.dirname(__file__), "copy_markup_image\\Drawing_backup.pdf")
     shutil.copy(new_file_2, new_file)
     PCETools.paste_markup_to_file(standard_form, new_file, content_replace_dict={"XXXXXXX": "Like this"})
-"""
 
 def test_new_revision():
     region = [0, 802, 200, 11.5]
+    region_2 = [0, 1611, 400, 11.5]
+    region_3 = [0, 1611, 400, 11.5]
     new_region = region[:]
     standard_form = os.path.join(os.path.dirname(__file__), "copy_markup_image\\Drawing_1.pdf")
     new_file = os.path.join(os.path.dirname(__file__), "copy_markup_image\\Drawing_2.pdf")
@@ -69,3 +71,32 @@ def test_new_revision():
     page_number = 1
     PCETools.paste_markup_to_file(standard_form, new_file, region=region, offset=(0, new_region[1] - region[1]))
     PCETools.set_replace(new_file, page_number, before=["FOR APPROVAL", "FOR CONSTRUCTION"], after="FOR APPROVAL")
+"""
+
+def test_pdf_move_center():
+    import multiprocessing
+    center_point = [13.91296, 14.40692, 1161.803, 724.2948]
+    pdf_file = os.path.join(os.path.dirname(__file__), "align_template\\Template_1.pdf")
+    markups = PCETools.return_markup_by_page(pdf_file, 1)
+    markups = PCETools.filter_markup_by(markups, {"color": "#7A0000"})
+    assert len(markups) == 1
+    markup_rect = list(markups.items())[0]
+    coordinate = (float(markup_rect[1]['x']) + float(markup_rect[1]['width']) / 2, float(markup_rect[1]['y']) + float(markup_rect[1]['height']) / 2)
+    center_coordinate = (center_point[0] + center_point[2] / 2, center_point[1] + center_point[3] / 2)
+
+    offset = (center_coordinate[0] - coordinate[0], -center_coordinate[1] + coordinate[1])
+    PCETools.set_markup(pdf_file, 1, {markup_rect[0]: {"x": str(center_coordinate[0] - float(markup_rect[1]['width']) / 2), "y": str(center_coordinate[1] - float(markup_rect[1]['height']) / 2)}})
+
+    # pdf_file_2 = os.path.join(os.path.dirname(__file__), "align_template\\Template_2.pdf")
+    # PCETools.pdf_content_move(pdf_file, pdf_file_2, offset)
+    # shutil.move(pdf_file_2, pdf_file)
+    multiprocessing.freeze_support()
+    pool = multiprocessing.Pool(20)
+    align_page_tmp = os.path.join(PCETools.TEMP_PATH, "align_page_tmp")
+    os.makedirs(align_page_tmp, exist_ok=True)
+    output_files = PCETools.split_pdf(pdf_file, align_page_tmp)
+    output_files_2 = [item + ".output.pdf" for item in output_files]
+    for _ in pool.starmap(PCETools.pdf_content_move, [(output_file, output_file_2, offset) for output_file, output_file_2 in zip(output_files, output_files_2)]):
+        pass
+    PCETools.combine_pdf(output_files_2, pdf_file)
+    shutil.rmtree(align_page_tmp)

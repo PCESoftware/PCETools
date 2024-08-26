@@ -1,5 +1,6 @@
 import uuid
 import os
+import shutil
 import subprocess
 import logging
 import re
@@ -157,6 +158,9 @@ class PCETools:
     # Bluebeam
     @staticmethod
     def combine_pdf(input_file_list, output_file):
+        if len(input_file_list) == 1:
+            shutil.copy(input_file_list[0], output_file)
+            return
         combine_pdfs = []
         for file in input_file_list:
             combine_pdfs.append('\'' + file + '\'')
@@ -186,6 +190,14 @@ class PCETools:
             contents = [contents]
         contents = [item.lower() for item in contents]
         markups = {k: v for k, v in markups.items() if v.get("comment").strip().lower() in contents}
+        return markups
+
+    @staticmethod
+    def filter_markup_by(markups, property_dict):
+        for prop_k, prop_v in property_dict.items():
+            if type(prop_v) != list:
+                prop_v = [prop_v]
+            markups = {k: v for k, v in markups.items() if v.get(prop_k) in prop_v}
         return markups
 
     @staticmethod
@@ -398,3 +410,42 @@ class PCETools:
             os.remove(f)
         for f in pdf_list:
             os.remove(f)
+
+    @staticmethod
+    def split_pdf(input_pdf, output_dir):
+        with open(input_pdf, 'rb') as file:
+            reader = pypdf.PdfReader(file)
+            if len(reader.pages) == 1:
+                output_list = [os.path.join(output_dir, '0.pdf')]
+                shutil.copy(input_pdf, output_list[0])
+                return output_list
+            for i in range(len(reader.pages)):
+                writer = pypdf.PdfWriter()
+                writer.add_page(reader.pages[i])
+                output_pdf = os.path.join(output_dir, '{}.pdf'.format(i))
+                with open(output_pdf, 'wb') as output_file:
+                    writer.write(output_file)
+            return [os.path.join(output_dir, '{}.pdf'.format(i)) for i in range(len(reader.pages))]
+
+    @staticmethod
+    def pdf_content_move(input_file, output_file, offset, pages="all"):
+        reader = pypdf.PdfReader(input_file)
+        writer = pypdf.PdfWriter()
+        page = reader.pages[0]
+        offset_x, offset_y = offset
+        for page_id in range(len(reader.pages)):
+            if pages != 'all' and (type(pages) == 'list' and page_id not in pages):
+                writer.add_page(page)
+                continue
+            assert page.rotation in [0, 90, 180, 270]
+            if page.rotation == 0:
+                op = pypdf.Transformation().translate(offset_x, offset_y)
+            elif page.rotation == 90:
+                op = pypdf.Transformation().translate(-offset_y, offset_x)
+            elif page.rotation == 180:
+                op = pypdf.Transformation().translate(-offset_x, -offset_y)
+            else:
+                op = pypdf.Transformation().translate(offset_y, -offset_x)
+            page.add_transformation(op)
+            writer.add_page(page)
+        writer.write(output_file)
