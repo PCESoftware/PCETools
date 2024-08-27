@@ -173,8 +173,11 @@ class PCETools:
         command = f"Open('{file_dir}') MarkupGetExList({i}) Close()"
 
         result_bytes = subprocess.check_output([PCETools.BLUEBEAM_ENGINE_DIR, command])
-        result_text = result_bytes.decode("gbk").split("\n")[1]
+        result_text = result_bytes.decode("gbk").split("\r\n")[1]
         string = result_text.replace("|\"", "\"").replace("|'", "'").replace("'{", "{").replace("}'", "}").replace("||", "\\").replace("'True'", "true").replace("'False'", "false").replace("'None'", "null").replace("'", '"')
+        if string.strip() == '':
+            return {}
+        print(string.encode('ascii'))
         result_json = json.loads(string)
         return result_json
 

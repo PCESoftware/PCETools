@@ -57,7 +57,7 @@ def test_copy_markup():
     new_file_2 = os.path.join(os.path.dirname(__file__), "copy_markup_image\\Drawing_backup.pdf")
     shutil.copy(new_file_2, new_file)
     PCETools.paste_markup_to_file(standard_form, new_file, content_replace_dict={"XXXXXXX": "Like this"})
-"""
+
 def test_new_revision():
     region = [0, 802, 200, 11.5]
     region_2 = [0, 1611, 400, 11.5]
@@ -71,7 +71,6 @@ def test_new_revision():
     page_number = 1
     PCETools.paste_markup_to_file(standard_form, new_file, region=region, offset=(0, new_region[1] - region[1]))
     PCETools.set_replace(new_file, page_number, before=["FOR APPROVAL", "FOR CONSTRUCTION"], after="FOR APPROVAL")
-"""
 
 def test_pdf_move_center():
     import multiprocessing
@@ -101,3 +100,33 @@ def test_pdf_move_center():
     PCETools.combine_pdf(output_files_2, pdf_file)
     shutil.rmtree(align_page_tmp)
 """
+def mix_patch_v2(pdf_file, sub_files):
+    import multiprocessing
+    markups = PCETools.return_markup_by_page(pdf_file, 1)
+    markup_color_position = {v["color"]: (float(v.get("x", 0.0)), float(v.get("y", 0.0))) for _, v in markups.items() if "color" in v}
+    for pdf_file_i in sub_files:
+        for page in range(PCETools.page_count(pdf_file_i)):
+            markups_i = PCETools.return_markup_by_page(pdf_file_i, page + 1)
+            markups_i = PCETools.filter_markup_by(markups_i, {"color": list(markup_color_position)})
+            assert len(markups_i) == 1
+            markup_i = list(markups_i.items())[0]
+            coordinate = (float(markup_i[1]['x']), float(markup_i[1]['y']))
+            pos = markup_color_position[markup_i[1]['color']]
+            offset = (pos[0] - coordinate[0], coordinate[1] - pos[1])
+            PCETools.set_markup(pdf_file_i, page + 1, {markup_i[0]: {"x": str(pos[0]), "y": str(pos[1])}})
+
+        multiprocessing.freeze_support()
+        pool = multiprocessing.Pool(20)
+        align_page_tmp = os.path.join(PCETools.TEMP_PATH, "mix_patch_v2_tmp")
+        os.makedirs(align_page_tmp, exist_ok=True)
+        output_files = PCETools.split_pdf(pdf_file_i, align_page_tmp)
+        output_files_2 = [item + ".output.pdf" for item in output_files]
+        for _ in pool.starmap(PCETools.pdf_content_move, [(output_file, output_file_2, offset) for output_file, output_file_2 in zip(output_files, output_files_2)]):
+            pass
+        PCETools.combine_pdf(output_files_2, pdf_file_i)
+        shutil.rmtree(align_page_tmp)
+
+def test_mix_patch_v2():
+    pdf_file = os.path.join(os.path.dirname(__file__), "mix\\all.pdf")
+    pdf_file_i = [os.path.join(os.path.dirname(__file__), f"mix\\{i}.pdf") for i in range(1, 5)]
+    mix_patch_v2(pdf_file, pdf_file_i)
