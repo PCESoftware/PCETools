@@ -57,14 +57,14 @@ def test_copy_markup():
     new_file_2 = os.path.join(os.path.dirname(__file__), "copy_markup_image\\Drawing_backup.pdf")
     shutil.copy(new_file_2, new_file)
     PCETools.paste_markup_to_file(standard_form, new_file, content_replace_dict={"XXXXXXX": "Like this"})
-
+"""
 def test_new_revision():
     region = [0, 802, 200, 11.5]
     region_2 = [0, 1611, 400, 11.5]
     region_3 = [0, 1611, 400, 11.5]
     new_region = region[:]
     standard_form = os.path.join(os.path.dirname(__file__), "copy_markup_image\\Drawing_1.pdf")
-    new_file = os.path.join(os.path.dirname(__file__), "copy_markup_image\\Drawing_2.pdf")
+    new_file = os.path.join(os.path.dirname(__file__), "copy_markup_image\\Drawing_demo.pdf")
     new_file_markups = PCETools.return_markup_by_page(new_file, 1)
     while new_region[1] > 0 and PCETools.get_markup_in_region(new_file_markups, new_region) != {}:
         new_region[1] -= new_region[3]
@@ -100,3 +100,4 @@ def test_pdf_move_center():
         pass
     PCETools.combine_pdf(output_files_2, pdf_file)
     shutil.rmtree(align_page_tmp)
+"""

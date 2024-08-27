@@ -189,7 +189,7 @@ class PCETools:
         if type(contents) is str:
             contents = [contents]
         contents = [item.lower() for item in contents]
-        markups = {k: v for k, v in markups.items() if v.get("comment").strip().lower() in contents}
+        markups = {k: v for k, v in markups.items() if v.get("comment", '').strip().lower() in contents}
         return markups
 
     @staticmethod
