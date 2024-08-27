@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='pce',
-    version='1.0.2',
+    version='1.0.3',
     description='PCETools, a basic library for PCE softwares',
     author='Scihacker',
     author_email='sjtuzlp@gmail.com',
