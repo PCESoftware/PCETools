@@ -169,6 +169,13 @@ class PCETools:
         subprocess.check_output([PCETools.BLUEBEAM_ENGINE_DIR, command])
 
     @staticmethod
+    def _replace_control_chars(s):
+        def replacer(match):
+            char = match.group(0)
+            return f'\\u{ord(char):04x}'
+        return re.sub(r'[\x00-\x1F\x7F]', replacer, s)
+
+    @staticmethod
     def return_markup_by_page(file_dir, i):
         command = f"Open('{file_dir}') MarkupGetExList({i}) Close()"
 
@@ -177,7 +184,7 @@ class PCETools:
         string = result_text.replace("|\"", "\"").replace("|'", "'").replace("'{", "{").replace("}'", "}").replace("||", "\\").replace("'True'", "true").replace("'False'", "false").replace("'None'", "null").replace("'", '"')
         if string.strip() == '':
             return {}
-        print(string.encode('ascii'))
+        string = PCETools._replace_control_chars(string)
         result_json = json.loads(string)
         return result_json
 
