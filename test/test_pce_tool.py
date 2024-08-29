@@ -1,4 +1,5 @@
 import sys
+import json
 import os
 import shutil
 import functools
@@ -99,7 +100,7 @@ def test_pdf_move_center():
         pass
     PCETools.combine_pdf(output_files_2, pdf_file)
     shutil.rmtree(align_page_tmp)
-"""
+
 def mix_patch_v2(pdf_file, sub_files):
     import multiprocessing
     markups = PCETools.return_markup_by_page(pdf_file, 1)
@@ -130,3 +131,16 @@ def test_mix_patch_v2():
     pdf_file = os.path.join(os.path.dirname(__file__), "mix\\all.pdf")
     pdf_file_i = [os.path.join(os.path.dirname(__file__), f"mix\\{i}.pdf") for i in range(1, 5)]
     mix_patch_v2(pdf_file, pdf_file_i)
+"""
+
+def test_version_setter():
+    UPLIFT_SIZE = -11.6
+    CONTEXT = {"a0": {"VERSION": {"$TYPE": "while-list", "$UPLIFT_SIZE": (0, UPLIFT_SIZE), "REV": [49.91895, 2318.24], "REVISION DESCRIPTION": [85.23486, 2318.24], "DRW": [227.1118, 2318.24], "CHK": [264.9587, 2318.24], "DATE Y.M.D": [304.6389, 2318.24]}, "PROJECT": [2272.446, 2232.563], "SCALE": [3053.2, 2235.87], "PROJECT No.": [3053.2, 2279.353], "DRAWING No.": [3053.2, 2320.773], "TYPE OF ISSUE": [3138.28, 2320.818], "DRAWN BY": [3138.28, 2236.499], "CHECKED BY": [3138.28, 2279.191]}, "a1": {"VERSION": {"$TYPE": "while-list", "$UPLIFT_SIZE": (0, UPLIFT_SIZE), "REV": [51.47995, 1617.341], "REVISION DESCRIPTION": [86.79601, 1617.341], "DRW": [228.6728, 1617.341], "CHK": [266.5199, 1617.341], "DATE Y.M.D": [306.1994, 1617.341]}, "PROJECT": [1524.801, 1533.359], "SCALE": [2067.0, 1535.052], "PROJECT No.": [2067.0, 1578.535], "DRAWING No.": [2067.0, 1619.956], "TYPE OF ISSUE": [2152.08, 1620.0], "DRAWN BY": [2152.08, 1535.682], "CHECKED BY": [2152.08, 1578.373]}, "a3": {"VERSION": {"$TYPE": "while-list", "$UPLIFT_SIZE": (0, UPLIFT_SIZE), "REV": [16.01697, 808.8484], "REVISION DESCRIPTION": [34.50598, 808.8484], "DRW": [142.6079, 808.8484], "CHK": [160.26, 808.8484], "DATE Y.M.D": [181.502, 808.8484]}, "PROJECT": [869.0056, 747.4893], "SCALE": [1075.596, 747.387], "PROJECT No.": [1079.934, 771.3923], "DRAWING No.": [1084.874, 794.3511], "TYPE OF ISSUE": [1084.786, 815.5005], "DRAWN BY": [1141.957, 748.9429], "CHECKED BY": [1143.425, 771.4201]}}
+    TOL = 6
+    pdf_file = os.path.join(os.path.dirname(__file__), "markup_version\\a3.pdf")
+    markups = PCETools.return_markup_by_page(pdf_file, 1)
+    structured_context = PCETools.get_structured_markups_from(markups, CONTEXT["a3"], TOL)
+    new_line = {"REV":["",[0,0,"D"]],"REVISION DESCRIPTION":["",[34.50598,808.8484,"FOR CONSTRUCTION"]],"DRW":["",[142.6079,808.8484,"YX"]],"CHK":["",[0,0,"FY"]],"DATE Y.M.D":["",[181.502,808.8484,"20240830"]]}
+    DATA_A = {"VERSION": structured_context["VERSION"], "PROJECT":["VTEEWTAAIDLFTHAP",[869.0056,747.4893,"299 Sussex St"]],"SCALE":["OBHMQOQPTKPYILCW",[1075.596,747.387,"1:1000000"]],"PROJECT No.":["WNHCNQNOOAEPUSUN",[1079.934,771.3923,"00233"]],"DRAWING No.":["MAIEOBPIPHPVHLGM",[1084.874,794.3511,"09874"]],"TYPE OF ISSUE":["RJAGNINEVSPMQEEO",[1084.786,815.5005,"Bill"]],"DRAWN BY":["WLBEZUIWNGGJEGNT",[1141.957,748.9429,"Hello"]],"CHECKED BY":["EIGQDLSYXVPYNYMR",[1143.425,771.4201,"Boss"]]}
+    DATA_A["VERSION"].append(new_line)
+    PCETools.set_structured_markups(pdf_file, 1, DATA_A, (0, UPLIFT_SIZE))

@@ -10,6 +10,7 @@ import svgwrite
 from xml.etree import ElementTree as ET
 import pypdf
 import json
+import copy
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(filename='myapp.log', level=logging.INFO)
@@ -213,6 +214,13 @@ class PCETools:
     @staticmethod
     def copy_markup(file_dir, i, key):
         command = f"Open('{file_dir}') MarkupCopy({i}, '{key}') Close()"
+        result_bytes = subprocess.check_output([PCETools.BLUEBEAM_ENGINE_DIR, command])
+        result_text = result_bytes.decode("utf-8").split("\n")[1].strip()
+        return result_text
+
+    @staticmethod
+    def paste_markup_single(file_dir, i, format_xml, position):
+        command = f"Open('{file_dir}') MarkupPaste({i}, '{format_xml}', {position[0]}, {position[1]}) Save() Close()"
         result_bytes = subprocess.check_output([PCETools.BLUEBEAM_ENGINE_DIR, command])
         result_text = result_bytes.decode("utf-8").split("\n")[1].strip()
         return result_text
@@ -459,3 +467,54 @@ class PCETools:
             page.add_transformation(op)
             writer.add_page(page)
         writer.write(output_file)
+
+    @staticmethod
+    def get_structured_markups_from(markups, context, tol=6, offset=(0, 0)):
+        def inside_with_tol(pos, target, tol, offset):
+            pos = (pos[0] + offset[0], pos[1] + offset[1])
+            return pos[0] - tol / 2 < target[0] < pos[0] + tol / 2 and pos[1] - tol / 2 < target[1] < pos[1] + tol / 2
+        def get_markup_info_with_tol(markups, pos, tol, offset):
+            result = []
+            for ki, vi in markups.items():
+                x, y, comment = float(vi.get('x', 0)), float(vi.get('y', 0)), vi.get('comment', 0)
+                if inside_with_tol(pos, (x, y), tol, offset):
+                    result.append((ki, (x, y, comment)))
+            return result
+        result = {}
+        for item, v in copy.deepcopy(context).items():
+            if item.startswith("$"):
+                continue
+            elif type(v) == dict and v.get("$TYPE") == "while-list":
+                value = []
+                up_lift_size = v.pop("$UPLIFT_SIZE")
+                v["$TYPE"] = "dict"
+                offset_i = offset[:]
+                while True:
+                    current_value = PCETools.get_structured_markups_from(markups, v, tol, offset_i)
+                    if all(map(lambda x: x is None, current_value.values())):
+                        break
+                    value.append(current_value)
+                    offset_i = (offset_i[0] + up_lift_size[0], offset_i[1] + up_lift_size[1])
+            elif type(v) == dict:
+                value = PCETools.get_structured_markups_from(markups, v, tol, offset)
+            else:
+                value = get_markup_info_with_tol(markups, v, tol, offset)
+                value = None if len(value) == 0 else value[0]
+            result[item] = value
+        return result
+
+    @staticmethod
+    def set_structured_markups(file_dir, i, context, up_lift):
+        context = copy.deepcopy(context)
+        version = context.pop("VERSION")
+        assert len(version) > 0, "At least one version Row in the page"
+        PCETools.set_markup(file_dir, i, {k: {"x": str(x), "y": str(y), "comment": comment} for _, (k, (x, y, comment)) in context.items()})
+        for j, item in enumerate(version):
+            PCETools.set_markup(file_dir, i, {k: {"x": str(x), "y": str(y), "comment": comment} for _, (k, (x, y, comment)) in item.items() if k not in ("", None)})
+            for name, (k, (_, _, comment)) in item.items():
+                if k not in ("", None):
+                    continue
+                markup_content = PCETools.copy_markup(file_dir, i, version[0][name][0])
+                k = PCETools.paste_markup_single(file_dir, i, markup_content, (0, 0))
+                x, y = version[0][name][1][0], version[0][name][1][1]
+                PCETools.set_markup(file_dir, i, {k: {"x": str(x + j * up_lift[0]), "y": str(y + j * up_lift[1]), "comment": comment}})
