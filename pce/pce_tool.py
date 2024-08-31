@@ -478,7 +478,7 @@ class PCETools:
             for ki, vi in markups.items():
                 x, y, comment = float(vi.get('x', 0)), float(vi.get('y', 0)), vi.get('comment', 0)
                 if inside_with_tol(pos, (x, y), tol, offset):
-                    result.append((ki, (x, y, comment)))
+                    result.append([ki, [x, y, comment]])
             return result
         result = {}
         for item, v in copy.deepcopy(context).items():
